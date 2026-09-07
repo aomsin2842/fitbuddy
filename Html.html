@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FitBuddy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Prompt', sans-serif; -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; padding: 0; }
+        body { display: flex; justify-content: center; align-items: center; background: #e0e7ff; }
+        .app-container {
+            width: 100%; max-width: 430px; height: 100%;
+            position: relative; overflow: hidden;
+            background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 50%, #dbeafe 100%);
+            box-shadow: 0 25px 80px rgba(139,92,246,0.15);
+        }
+        @media (min-width: 431px) { .app-container { height: 90%; border-radius: 40px; } }
+        .page {
+            display: none !important; visibility: hidden; opacity: 0; pointer-events: none;
+            position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0;
+            background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 50%, #dbeafe 100%);
+        }
+        .page.active {
+            display: flex !important; visibility: visible; opacity: 1; pointer-events: auto;
+            z-index: 10; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
+            animation: fadeIn 0.28s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .glass-card { background: rgba(255,255,255,0.78); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.85); box-shadow: 0 8px 32px rgba(139,92,246,0.1); }
+        .purple-gradient { background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 50%, #c4b5fd 100%); }
+        .soft-gradient-1 { background: linear-gradient(135deg, #ddd6fe 0%, #fae8ff 100%); }
+        .soft-gradient-2 { background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%); }
+        .soft-gradient-3 { background: linear-gradient(135deg, #fce7f3 0%, #f3e8ff 100%); }
+        .nav-item.active { color: #8b5cf6; }
+        .nav-item.active .nav-dot { opacity: 1; transform: scale(1); }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        input, select, textarea { background: rgba(255,255,255,0.95); border: 1px solid rgba(139,92,246,0.15); transition: all 0.2s; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,0.15); }
+        .package-card.selected, .gender-btn.selected, .sport-chip.selected, .level-btn.selected { border-color: #8b5cf6; background: rgba(139,92,246,0.1); box-shadow: 0 8px 32px rgba(139,92,246,0.18); }
+        .toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+            padding: 12px 20px; border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            z-index: 9999; opacity: 0; transition: all 0.3s;
+            display: flex; align-items: center; gap: 10px;
+            border: 1px solid rgba(139,92,246,0.1);
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .swipe-card { transition: transform 0.3s, opacity 0.3s; touch-action: pan-y; }
+        .swipe-left { transform: translateX(-120%) rotate(-12deg); opacity: 0; }
+        .swipe-right { transform: translateX(120%) rotate(12deg); opacity: 0; }
+        .stamp { position: absolute; top: 30px; padding: 6px 14px; border-radius: 10px; font-weight: 700; font-size: 18px; border: 3px solid; opacity: 0; transform: scale(0.5); transition: all 0.2s; }
+        .stamp.like { right: 20px; color: #22c55e; border-color: #22c55e; transform: rotate(12deg); }
+        .stamp.skip { left: 20px; color: #ef4444; border-color: #ef4444; transform: rotate(-12deg); }
+        .swipe-card.swiping-right .stamp.like { opacity: 1; transform: scale(1) rotate(12deg); }
+        .swipe-card.swiping-left .stamp.skip { opacity: 1; transform: scale(1) rotate(-12deg); }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); z-index: 100; display: none; align-items: flex-end; justify-content: center; }
+        .modal.show { display: flex; }
+        .modal-content { background: white; width: 100%; max-width: 430px; border-radius: 30px 30px 0 0; padding: 24px; animation: slideUp 0.25s ease; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="app-container hide-scrollbar" id="app">
+
+    <!-- Toast -->
+    <div id="toast" class="toast">
+        <span id="toast-icon">✅</span>
+        <span id="toast-msg" class="text-slate-700 text-sm font-medium"></span>
+    </div>
+
+    <!-- Splash -->
+    <div id="splash" class="page active flex-col items-center justify-center p-8 relative">
+        <div class="absolute top-10 right-10 w-32 h-32 bg-purple-300 rounded-full blur-3xl opacity-40"></div>
+        <div class="absolute bottom-20 left-10 w-40 h-40 bg-blue-300 rounded-full blur-3xl opacity-40"></div>
+        <div class="w-24 h-24 purple-gradient rounded-3xl flex items-center justify-center shadow-lg mb-6 animate-bounce">
+            <svg class="w-14 h-14 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+        </div>
+        <h1 class="text-4xl font-bold text-slate-800 mb-2">FitBuddy</h1>
+        <p class="text-slate-500 mb-10">Match • Workout • Connect</p>
+        <div class="w-full space-y-3">
+            <button type="button" onclick="goTo('welcome')" class="w-full py-4 purple-gradient text-white rounded-2xl font-semibold text-lg shadow-lg active:scale-95 transition">เริ่มต้นใช้งาน</button>
+            <button type="button" onclick="goTo('login')" class="w-full py-4 bg-white/80 text-purple-600 rounded-2xl font-semibold border border-purple-100 active:scale-95 transition">เข้าสู่ระบบ</button>
+        </div>
+        <p class="mt-6 text-sm text-slate-400">ยังไม่มีบัญชี? <span class="text-purple-600 font-medium cursor-pointer" onclick="goTo('register')">สมัครเลย</span></p>
+    </div>
+
+    <!-- Welcome -->
+    <div id="welcome" class="page flex-col p-6 relative">
+        <div class="absolute top-0 left-0 w-full h-2/3 soft-gradient-1 rounded-b-[50px] -z-10"></div>
+        <div class="flex-1 flex flex-col items-center justify-center">
+            <div class="w-full max-w-xs mb-8 relative">
+                <div class="absolute -inset-4 bg-purple-200 rounded-full blur-3xl opacity-30"></div>
+                <div class="glass-card rounded-3xl p-6 shadow-lg text-center">
+                    <div class="text-6xl mb-4">🏃‍♀️🤝🏋️‍♂️</div>
+                    <p class="text-slate-600 font-medium">แอปจับคู่เพื่อน<br>ออกกำลังกาย</p>
+                </div>
+            </div>
+            <h2 class="text-3xl font-bold text-slate-800 text-center mb-3">แอปจับคู่เพื่อน<br>ออกกำลังกาย</h2>
+            <p class="text-slate-500 text-center mb-8">ภายในเครือข่ายของเรา<br>ปลอดภัย เป็นมิตร และสนุกกว่าเดิม</p>
+        </div>
+        <button type="button" onclick="goTo('register')" class="w-full py-4 purple-gradient text-white rounded-2xl font-semibold text-lg shadow-lg mb-4 active:scale-95 transition">ไปต่อ</button>
+        <div class="flex justify-center gap-2 mb-2">
+            <div class="w-8 h-2 bg-purple-500 rounded-full"></div>
+            <div class="w-2 h-2 bg-purple-200 rounded-full"></div>
+            <div class="w-2 h-2 bg-purple-200 rounded-full"></div>
+        </div>
+    </div>
+
+    <!-- Login -->
+    <div id="login" class="page flex-col p-6">
+        <button type="button" onclick="goTo('splash')" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/60 mb-6 active:scale-95">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        </button>
+        <h2 class="text-3xl font-bold text-slate-800 mb-2">ยินดีต้อนรับกลับ</h2>
+        <p class="text-slate-500 mb-8">เข้าสู่ระบบเพื่อหาเพื่อนออกกำลังกาย</p>
+        <div class="space-y-4 mb-6">
+            <div>
+                <label class="text-sm text-slate-600 mb-1 block">เลขสมาชิก / เบอร์โทร</label>
+                <input id="login-id" type="text" placeholder="กรอกเลขสมาชิก" class="w-full px-4 py-4 rounded-2xl text-slate-700">
+            </div>
+            <div>
+                <label class="text-sm text-slate-600 mb-1 block">รหัสผ่าน</label>
+                <input id="login-pass" type="password" placeholder="กรอกรหัสผ่าน" class="w-full px-4 py-4 rounded-2xl text-slate-700">
+            </div>
+        </div>
+        <button type="button" onclick="doLogin()" class="w-full py-4 purple-gradient text-white rounded-2xl font-semibold text-lg shadow-lg active:scale-95 transition">เข้าสู่ระบบ</button>
+        <p class="mt-4 text-center text-sm text-slate-400">ยังไม่มีบัญชี? <span class="text-purple-600 cursor-pointer" onclick="goTo('register')">สมัครเลย</span></p>
+    </div>
+
+    <!-- Register -->
+    <div id="register" class="page flex-col p-6 overflow-y-auto hide-scrollbar">
+        <button type="button" onclick="goTo('welcome')" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/60 mb-4 active:scale-95">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        </button>
+        <h2 class="text-2xl font-bold text-slate-800 mb-1">สร้างบัญชี</h2>
+        <p class="text-slate-500 mb-6 text-sm">กรอกข้อมูลส่วนตัวครั้งแรกเท่านั้น</p>
+        <div class="space-y-4">
+            <div class="glass-card p-4 rounded-2xl">
+                <label class="text-sm text-slate-600 mb-1 block">ชื่อเล่น</label>
+                <input id="reg-name" type="text" placeholder="ชื่อเล่นของคุณ" class="w-full px-4 py-3 rounded-xl">
+            </div>
+            <div class="glass-card p-4 rounded-2xl">
+                <label class="text-sm text-slate-600 mb-1 block">เลขสมาชิก</label>
+                <input id="reg-id" type="text" placeholder="กรอกเลขสมาชิก" class="w-full px-4 py-3 rounded-xl">
+            </div>
+            <div class="glass-card p-4 rounded-2xl">
+                <label class="text-sm text-slate-600 mb-1 block">รหัสผ่าน</label>
+                <input id="reg-pass" type="password" placeholder="ตั้งรหัสผ่าน" class="w-full px-4 py-3 rounded-xl">
+            </div>
+            <div class="glass-card p-4 rounded-2xl">
+                <label class="text-sm text-slate-600 mb-2 block">เพศ</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button" class="gender-btn py-2 rounded-xl bg-white text-slate-600 text-sm border border-transparent" data-g="ชาย" onclick="selectGender(this)">ชาย</button>
+                    <button type="button" class="gender-btn py-2 rounded-xl bg-white text-slate-600 text-sm border border-transparent" data-g="หญิง" onclick="selectGender(this)">หญิง</button>
+                    <button type="button" class="gender-btn py-2 rounded-xl bg-white text-slate-600 text-sm border border-transparent" data-g="อื่นๆ" onclick="selectGender(this)">อื่นๆ</button>
+                </div>
+            </div>
+            <div class="glass-card p-4 rounded-2xl">
+                <label class="text-sm text-slate-600 mb-1 block">อายุ</label>
+                <input id="reg-age" type="number" min="15" max="80" value="24" class="w-full px-4 py-3 rounded-xl">
+            </div>
+            <div class="glass-card p-4 rounded-2xl">
+                <label class="text-sm text-slate-600 mb-1 block">อาชีพ</label>
+                <select id="reg-job" class="w-full px-4 py-3 rounded-xl">
+                    <option>พนักงานบริษัท</option>
+                    <option>นักศึกษา</option>
+                    <option>ฟรีแลนซ์</option>
+                    <option>ธุรกิจส่วนตัว</option>
+                    <option>อื่นๆ</option>
+                </select>
+            </div>
+        </div>
+        <div class="mt-auto pt-6">
+            <button type="button" onclick="doRegister()" class="w-full py-4 purple-gradient text-white rounded-2xl font-semibold text-lg shadow-lg active:scale-95 transition">ถัดไป</button>
+        </div>
+    </div>
+
+    <!-- Package -->
+    <div id="package" class="page flex-col p-6 overflow-y-auto hide-scrollbar">
+        <button type="button" onclick="goTo('register')" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/60 mb-4 active:scale-95">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        </button>
+        <h2 class="text-2xl font-bold text-slate-800 mb-1">เลือกแพ็กเกจที่ใช้</h2>
+        <p class="text-slate-500 mb-6 text-sm">เลือกแพ็กเกจปัจจุบันของคุณ</p>
+        <div class="space-y-3 mb-6" id="package-list">
+            <div class="package-card selected glass-card p-4 rounded-2xl border-2 border-transparent cursor-pointer" data-p="Signature" onclick="selectPackage(this)">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full purple-gradient flex items-center justify-center text-white text-sm">✓</div>
+                    <div><h3 class="font-bold text-slate-800">Signature</h3><p class="text-xs text-slate-500">ครบครัน คุ้มค่าที่สุด</p></div>
+                </div>
+            </div>
+            <div class="package-card glass-card p-4 rounded-2xl border-2 border-transparent cursor-pointer" data-p="Core" onclick="selectPackage(this)">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-sm">✓</div>
+                    <div><h3 class="font-bold text-slate-800">Core</h3><p class="text-xs text-slate-500">คุ้มค่า ครอบคลุมพื้นฐาน</p></div>
+                </div>
+            </div>
+            <div class="package-card glass-card p-4 rounded-2xl border-2 border-transparent cursor-pointer" data-p="U-rate" onclick="selectPackage(this)">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-sm">✓</div>
+                    <div><h3 class="font-bold text-slate-800">U-rate</h3><p class="text-xs text-slate-500">เน้นนักกีฬา ราคาประหยัด</p></div>
+                </div>
+            </div>
+        </div>
+        <div class="mt-auto pt-4">
+            <button type="button" onclick="goTo('interests')" class="w-full py-4 purple-gradient text-white rounded-2xl font-semibold text-lg shadow-lg active:scale-95 transition">ถัดไป</button>
+        </div>
+    </div>
+
+    <!-- Interests -->
+    <div id="interests" class="page flex-col p-6 overflow-y-auto hide-scrollbar">
+        <button type="button" onclick="goTo('package')" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/60 mb-4 active:scale-95">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        </button>
+        <h2 class="text-2xl font-bold text-slate-800 mb-1">ความสนใจและระดับกีฬา</h2>
+        <p class="text-slate-500 mb-6 text-sm">เลือกกีฬาที่ชอบและระดับทักษะ</p>
+        <div class="space-y-3 mb-6" id="sports-list">
+            <div class="glass-card p-4 rounded-2xl flex justify-between items-center sport-row" data-sport="วิ่ง">
+                <span class="text-slate-700 font-medium">🏃 วิ่ง</span>
+                <select class="sport-level px-3 py-2 rounded-xl text-sm">
+                    <option>ไม่ได้เล่น</option><option>ระดับต้น</option><option selected>ระดับปานกลาง</option><option>ระดับสูง</option>
+                </select>
+            </div>
+            <div class="glass-card p-4 rounded-2xl flex justify-between items-center sport-row" data-sport="เวทเทรนนิ่ง">
+                <span class="text-slate-700 font-medium">🏋️ เวทเทรนนิ่ง</span>
+                <select class="sport-level px-3 py-2 rounded-xl text-sm">
+                    <option>ไม่ได้เล่น</option><option selected>ระดับต้น</option><option>ระดับปานกลาง</option><option>ระดับสูง</option>
+                </select>
+            </div>
+            <div class="glass-card p-4 rounded-2xl flex justify-between items-center sport-row" data-sport="แบดมินตัน">
+                <span class="text-slate-700 font-medium">🏸 แบดมินตัน</span>
+                <select class="sport-level px-3 py-2 rounded-xl text-sm">
+                    <option>ไม่ได้เล่น</option><option>ระดับต้น</option><option selected>ระดับปานกลาง</option><option>ระดับสูง</option>
+                </select>
+            </div>
+            <div class="glass-card p-4 rounded-2xl flex justify-between items-center sport-row" data-sport="ว่ายน้ำ">
+                <span class="text-slate-700 font-medium">🏊 ว่ายน้ำ</span>
+                <select class="sport-level px-3 py-2 rounded-xl text-sm">
+                    <option selected>ไม่ได้เล่น</option><option>ระดับต้น</option><option>ระดับปานกลาง</option><option>ระดับสูง</option>
+                </select>
+            </div>
+        </div>
+        <button type="button" onclick="showAddSportModal()" class="w-full py-3 border-2 border-dashed border-purple-200 rounded-2xl text-purple-600 text-sm font-medium mb-4 active:bg-purple-50">+ เพิ่มกีฬาอื่นๆ</button>
+        <div class="mt-auto pt-4">
+            <button type="button" onclick="saveInterests()" class="w-full py-4 purple-gradient text-white rounded-2xl font-semibold text-lg shadow-lg active:scale-95 transition">บันทึก</button>
+        </div>
+    </div>
+
+    <!-- Home -->
+    <div id="home" class="page flex-col pb-20">
+        <div class="p-6 pb-4">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <p class="text-slate-500 text-sm">สวัสดี, <span id="home-name">พี่หมี่</span>👋</p>
+                    <h2 class="text-2xl font-bold text-slate-800">หาเพื่อนออกกำลังกาย<br>เริ่มเลย ></h2>
+                </div>
+                <button type="button" onclick="showNoti()" class="w-10 h-10 rounded-full bg-white/80 flex items-center justify-center relative active:scale-95">
+                    <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    <div class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></div>
+                </button>
+            </div>
+            <div class="purple-gradient rounded-3xl p-5 text-white shadow-lg mb-6 relative overflow-hidden active:scale-[0.98] transition" onclick="goTo('match')">
+                <div class="absolute -right-6 -top-6 w-32 h-32 bg-white/20 rounded-full blur-2xl"></div>
+                <h3 class="font-bold text-lg mb-1 relative z-10">หาเพื่อนออกกำลังกาย</h3>
+                <p class="text-white/80 text-sm mb-4 relative z-10">จับคู่ตามความสนใจและระดับกีฬา</p>
+                <button type="button" class="bg-white text-purple-600 px-5 py-2 rounded-xl font-semibold text-sm relative z-10">เริ่มจับคู่</button>
+            </div>
+            <p class="font-semibold text-slate-700 mb-3">เมนูด่วน</p>
+            <div class="grid grid-cols-4 gap-3 mb-6">
+                <button type="button" class="glass-card p-3 rounded-2xl flex flex-col items-center gap-2 active:scale-95 transition" onclick="goToSport('วิ่ง')">
+                    <div class="w-10 h-10 rounded-full soft-gradient-1 flex items-center justify-center text-xl">🏃</div><span class="text-xs text-slate-600">วิ่ง</span>
+                </button>
+                <button type="button" class="glass-card p-3 rounded-2xl flex flex-col items-center gap-2 active:scale-95 transition" onclick="goToSport('เวทเทรนนิ่ง')">
+                    <div class="w-10 h-10 rounded-full soft-gradient-2 flex items-center justify-center text-xl">🏋️</div><span class="text-xs text-slate-600">เวท</span>
+                </button>
+                <button type="button" class="glass-card p-3 rounded-2xl flex flex-col items-center gap-2 active:scale-95 transition" onclick="goToSport('แบดมินตัน')">
+                    <div class="w-10 h-10 rounded-full soft-gradient-3 flex items-center justify-center text-xl">🏸</div><span class="text-xs text-slate-600">แบด</span>
+                </button>
+                <button type="button" class="glass-card p-3 rounded-2xl flex flex-col items-center gap-2 active:scale-95 transition" onclick="goToSport('ว่ายน้ำ')">
+                    <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">🏊</div><span class="text-xs text-slate-600">ว่ายน้ำ</span>
+                </button>
+            </div>
+            <div class="flex justify-between items-center mb-3">
+                <p class="font-semibold text-slate-700">กิจกรรมแนะนำ</p>
+                <button type="button" onclick="goTo('activities')" class="text-xs text-purple-600 font-medium">ดูทั้งหมด</button>
+            </div>
+            <div id="home-events" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <!-- Match -->
+    <div id="match" class="page flex-col pb-20">
+        <div class="p-6 h-full flex flex-col">
+            <div class="flex items-center gap-3 mb-4">
+                <button type="button" onclick="goTo('home')" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/60 active:scale-95">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                </button>
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">จับคู่เพื่อน</h2>
+                    <p class="text-xs text-slate-500">เลื่อนไปทางขวา = สนใจ, ซ้าย = ข้าม</p>
+                </div>
+            </div>
+            <div class="flex gap-2 overflow-x-auto hide-scrollbar mb-4">
+                <button type="button" class="sport-chip selected px-4 py-2 rounded-full text-sm whitespace-nowrap bg-white text-slate-600 border border-transparent" onclick="filterMatch('all',this)">ทั้งหมด</button>
+                <button type="button" class="sport-chip px-4 py-2 rounded-full text-sm whitespace-nowrap bg-white text-slate-600 border border-transparent" onclick="filterMatch('วิ่ง',this)">🏃 วิ่ง</button>
+                <button type="button" class="sport-chip px-4 py-2 rounded-full text-sm whitespace-nowrap bg-white text-slate-600 border border-transparent" onclick="filterMatch('เวทเทรนนิ่ง',this)">🏋️ เวท</button>
+                <button type="button" class="sport-chip px-4 py-2 rounded-full text-sm whitespace-nowrap bg-white text-slate-600 border border-transparent" onclick="filterMatch('แบดมินตัน',this)">🏸 แบด</button>
+                <button type="button" class="sport-chip px-4 py-2 rounded-full text-sm whitespace-nowrap bg-white text-slate-600 border border-transparent" onclick="filterMatch('ว่ายน้ำ',this)">🏊 ว่ายน้ำ</button>
+            </div>
+            <div id="match-stack" class="flex-1 relative flex items-center justify-center min-h-[380px]"></div>
+            <div class="flex justify-center gap-6 mt-4">
+                <button type="button" onclick="swipe('left')" class="w-14 h-14 rounded-full bg-white shadow-lg flex items-center justify-center text-red-500 text-2xl active:scale-90 transition">✕</button>
+                <button type="button" onclick="swipe('right')" class="w-14 h-14 rounded-full purple-gradient shadow-lg flex items-center justify-center text-white text-2xl active:scale-90 transition">♥</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activities -->
+    <div id="activities" class="page flex-col pb-20">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-slate-800">กิจกรรมของฉัน</h2>
+                <button type="button" onclick="openCreateEvent()" class="w-10 h-10 rounded-full purple-gradient text-white flex items-center justify-center active:scale-95">+</button>
+            </div>
+            <div class="flex gap-3 mb-6">
+                <button type="button" id="tab-upcoming" onclick="setEventTab('upcoming')" class="px-5 py-2 purple-gradient text-white rounded-full text-sm font-medium transition">Upcoming</button>
+                <button type="button" id="tab-past" onclick="setEventTab('past')" class="px-5 py-2 bg-white/60 text-slate-500 rounded-full text-sm transition">Past</button>
+            </div>
+            <div id="events-list" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <!-- Chat List -->
+    <div id="chat" class="page flex-col pb-20">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-slate-800">แชท</h2>
+                <span id="chat-badge" class="hidden px-3 py-1 bg-purple-100 text-purple-600 rounded-full text-xs font-medium">ใหม่</span>
+            </div>
+            <div id="chat-list" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <!-- Chat Room -->
+    <div id="chat-room" class="page flex-col">
+        <div class="p-4 flex items-center gap-3 border-b border-white/60 bg-white/40 backdrop-blur-xl sticky top-0 z-20">
+            <button type="button" onclick="goTo('chat')" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/60 active:scale-95">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <img id="chat-header-img" src="" class="w-10 h-10 rounded-full border-2 border-white object-cover">
+            <div class="flex-1">
+                <h3 id="chat-header-name" class="font-bold text-slate-800 text-sm">--</h3>
+                <p class="text-xs text-green-600">ออนไลน์</p>
+            </div>
+        </div>
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 hide-scrollbar"></div>
+        <div class="p-4 bg-white/60 backdrop-blur-xl border-t border-white/60">
+            <div class="flex gap-2">
+                <input id="chat-input" type="text" placeholder="พิมพ์ข้อความ..." class="flex-1 px-4 py-3 rounded-2xl" onkeydown="if(event.key==='Enter') sendMessage()">
+                <button type="button" onclick="sendMessage()" class="w-12 h-12 purple-gradient rounded-2xl flex items-center justify-center text-white shadow-lg active:scale-95">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile -->
+    <div id="profile" class="page flex-col pb-20">
+        <div class="p-6">
+            <div class="text-center mb-6">
+                <div class="w-28 h-28 mx-auto rounded-full p-1 purple-gradient mb-3 relative cursor-pointer" onclick="changeAvatar()">
+                    <img id="profile-img" src="https://ui-avatars.com/api/?name=P&background=fff&color=8b5cf6&size=128" class="w-full h-full rounded-full border-4 border-white object-cover">
+                    <div class="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md">📷</div>
+                </div>
+                <h2 id="profile-name" class="text-xl font-bold text-slate-800">พิมพ์</h2>
+                <p id="profile-id" class="text-sm text-slate-500">เลขสมาชิก 12345678</p>
+                <span class="inline-block mt-2 px-3 py-1 bg-purple-100 text-purple-600 rounded-full text-xs font-medium" id="profile-badge">Signature</span>
+            </div>
+            <div class="glass-card p-4 rounded-2xl mb-4">
+                <p class="text-sm text-slate-500 mb-3">ข้อมูลส่วนตัว</p>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center"><span class="text-slate-600 text-sm">เพศ</span><span id="p-gender" class="text-slate-800 font-medium text-sm">หญิง</span></div>
+                    <div class="flex justify-between items-center"><span class="text-slate-600 text-sm">อายุ</span><span id="p-age" class="text-slate-800 font-medium text-sm">24</span></div>
+                    <div class="flex justify-between items-center"><span class="text-slate-600 text-sm">อาชีพ</span><span id="p-job" class="text-slate-800 font-medium text-sm">พนักงานบริษัท</span></div>
+                    <div class="flex justify-between items-center"><span class="text-slate-600 text-sm">แพ็กเกจ</span><span id="p-package" class="text-purple-600 font-medium text-sm">Signature</span></div>
+                </div>
+            </div>
+            <div class="glass-card p-4 rounded-2xl mb-4">
+                <p class="text-sm text-slate-500 mb-3">กีฬาที่สนใจ</p>
+                <div id="p-sports" class="flex flex-wrap gap-2"></div>
+            </div>
+            <button type="button" onclick="goToEditProfile()" class="w-full py-3 glass-card rounded-2xl text-slate-700 font-medium text-sm mb-3 flex justify-between px-4 active:scale-95">
+                <span>แก้ไขข้อมูล</span><svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </button>
+            <button type="button" onclick="goTo('interests')" class="w-full py-3 glass-card rounded-2xl text-slate-700 font-medium text-sm mb-3 flex justify-between px-4 active:scale-95">
+                <span>แก้ไขความสนใจ</span><svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </button>
+            <button type="button" onclick="logout()" class="w-full py-3 glass-card rounded-2xl text-red-500 font-medium text-sm active:scale-95">ออกจากระบบ</button>
+        </div>
+    </div>
+
+    <!-- Edit Profile -->
+    <div id="edit-profile" class="page flex-col p-6 overflow-y-auto hide-scrollbar">
+        <button type="button" onclick="goTo('profile')" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/60 mb-4 active:scale-95">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        </button>
+        <h2 class="text-2xl font-bold text-slate-800 mb-6">แก้ไขโปรไฟล์</h2>
+        <div class="space-y-4">
+            <div class="glass-card p-4 rounded-2xl">
+                <label class="text-sm text-slate-600 mb-1 block">ชื่อเล่น</label>
+                <input id="edit-name" type="text" class="w-full px-4 py-3 rounded-xl">
+            </div>
+            <div class="glass-card p-4 rounded-2xl">
+                <label class="text-sm text-slate-600 mb-1 block">อายุ</label>
+                <input id="edit-age" type="number" class="w-full px-4 py-3 rounded-xl">
+            </div>
+            <div class="glass-card p-4 rounded-2xl">
+                <label class="text-sm text-slate-600 mb-1 block">อาชีพ</label>
+                <select id="edit-job" class="w-full px-4 py-3 rounded-xl">
+                    <option>พนักงานบริษัท</option><option>นักศึกษา</option><option>ฟรีแลนซ์</option><option>ธุรกิจส่วนตัว</option><option>อื่นๆ</option>
+                </select>
+            </div>
+        </div>
+        <div class="mt-auto pt-6">
+            <button type="button" onclick="saveProfile()" class="w-full py-4 purple-gradient text-white rounded-2xl font-semibold text-lg shadow-lg active:scale-95 transition">บันทึก</button>
+        </div>
+    </div>
+
+    <!-- Global Bottom Nav -->
+    <div id="global-nav" class="bottom-nav absolute bottom-0 left-0 w-full bg-white/80 backdrop-blur-xl border-t border-white/60 px-2 py-2 flex justify-between items-center" style="display:none">
+        <button type="button" class="nav-item flex flex-col items-center gap-1 text-slate-400 text-xs px-2" data-target="home" onclick="goTo('home')">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>หน้าหลัก<div class="nav-dot w-1 h-1 bg-purple-500 rounded-full opacity-0 transition"></div>
+        </button>
+        <button type="button" class="nav-item flex flex-col items-center gap-1 text-slate-400 text-xs px-2" data-target="match" onclick="goTo('match')">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>ค้นหา<div class="nav-dot w-1 h-1 bg-purple-500 rounded-full opacity-0 transition"></div>
+        </button>
+        <button type="button" class="nav-item flex flex-col items-center gap-1 text-slate-400 text-xs px-2" data-target="activities" onclick="goTo('activities')">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>กิจกรรม<div class="nav-dot w-1 h-1 bg-purple-500 rounded-full opacity-0 transition"></div>
+        </button>
+        <button type="button" class="nav-item flex flex-col items-center gap-1 text-slate-400 text-xs px-2" data-target="chat" onclick="goTo('chat')">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>แชท<div class="nav-dot w-1 h-1 bg-purple-500 rounded-full opacity-0 transition"></div>
+        </button>
+        <button type="button" class="nav-item flex flex-col items-center gap-1 text-slate-400 text-xs px-2" data-target="profile" onclick="goTo('profile')">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>โปรไฟล์<div class="nav-dot w-1 h-1 bg-purple-500 rounded-full opacity-0 transition"></div>
+        </button>
+    </div>
+
+    <!-- Modal: Create Event -->
+    <div id="event-modal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-slate-800">สร้างกิจกรรมใหม่</h3>
+                <button type="button" onclick="closeModal('event-modal')" class="text-slate-400 text-2xl">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-sm text-slate-600 mb-1 block">ชื่อกิจกรรม</label>
+                    <input id="evt-title" type="text" placeholder="เช่น วิ่งตอนเช้า" class="w-full px-4 py-3 rounded-xl">
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600 mb-1 block">ประเภทกีฬา</label>
+                    <select id="evt-sport" class="w-full px-4 py-3 rounded-xl">
+                        <option>วิ่ง</option><option>เวทเทรนนิ่ง</option><option>แบดมินตัน</option><option>ว่ายน้ำ</option><option>โยคะ</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600 mb-1 block">วันที่ / เวลา</label>
+                    <input id="evt-date" type="datetime-local" class="w-full px-4 py-3 rounded-xl">
+                </div>
+                <div>
+                    <label class="text-sm text-slate-600 mb-1 block">สถานที่</label>
+                    <input id="evt-location" type="text" placeholder="เช่น สวนหลวง" class="w-full px-4 py-3 rounded-xl">
+                </div>
+                <button type="button" onclick="createEvent()" class="w-full py-4 purple-gradient text-white rounded-2xl font-semibold active:scale-95 transition">สร้างกิจกรรม</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add Sport -->
+    <div id="sport-modal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-slate-800">เพิ่มกีฬา</h3>
+                <button type="button" onclick="closeModal('sport-modal')" class="text-slate-400 text-2xl">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <input id="new-sport-name" type="text" placeholder="ชื่อกีฬา" class="w-full px-4 py-3 rounded-xl">
+                <select id="new-sport-level" class="w-full px-4 py-3 rounded-xl">
+                    <option>ระดับต้น</option><option selected>ระดับปานกลาง</option><option>ระดับสูง</option>
+                </select>
+                <button type="button" onclick="addCustomSport()" class="w-full py-4 purple-gradient text-white rounded-2xl font-semibold active:scale-95 transition">เพิ่ม</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// ---------- Safe Storage (fix aipass iframe) ----------
+const Storage = (function(){
+    let mem = {};
+    return {
+        get(key, def){
+            if (mem[key] !== undefined) return mem[key];
+            try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : def; } catch(e){ return def; }
+        },
+        set(key, val){
+            mem[key] = val;
+            try { localStorage.setItem(key, JSON.stringify(val)); } catch(e){}
+        },
+        remove(key){
+            delete mem[key];
+            try { localStorage.removeItem(key); } catch(e){}
+        }
+    };
+})();
+
+// ---------- State ----------
+let user = Storage.get('fitbuddy_user', null);
+let currentFilter = 'all';
+let eventTab = 'upcoming';
+let currentChatId = null;
+
+const defaultProfiles = [
+    { name: 'มีนา', age: 23, gender: 'หญิง', sport: 'วิ่ง', level: 'ระดับปานกลาง', pkg: 'Signature', avatar: 'https://ui-avatars.com/api/?name=มีนา&background=f472b6&color=fff', liked: false },
+    { name: 'ตูน', age: 25, gender: 'ชาย', sport: 'เวทเทรนนิ่ง', level: 'ระดับสูง', pkg: 'Core', avatar: 'https://ui-avatars.com/api/?name=ตูน&background=60a5fa&color=fff', liked: false },
+    { name: 'แพร', age: 22, gender: 'หญิง', sport: 'แบดมินตัน', level: 'ระดับต้น', pkg: 'U-rate', avatar: 'https://ui-avatars.com/api/?name=แพร&background=a78bfa&color=fff', liked: false },
+    { name: 'บอล', age: 27, gender: 'ชาย', sport: 'ว่ายน้ำ', level: 'ระดับปานกลาง', pkg: 'Signature', avatar: 'https://ui-avatars.com/api/?name=บอล&background=34d399&color=fff', liked: false },
+    { name: 'น้ำ', age: 24, gender: 'หญิง', sport: 'วิ่ง', level: 'ระดับสูง', pkg: 'Core', avatar: 'https://ui-avatars.com/api/?name=น้ำ&background=fbbf24&color=fff', liked: false }
+];
+let profiles = Storage.get('fitbuddy_profiles', defaultProfiles);
+
+let events = Storage.get('fitbuddy_events', [
+    { id: 1, title: 'วิ่งตอนเช้า', sport: 'วิ่ง', date: '2026-09-02T08:00', location: 'สวนหลวง', members: ['A','B'], joined: true },
+    { id: 2, title: 'เวทเทรนนิ่ง (กลุ่ม)', sport: 'เวทเทรนนิ่ง', date: '2026-09-04T18:00', location: 'ยิมฟิตเนส', members: ['C','D','E'], joined: false }
+]);
+
+let matches = Storage.get('fitbuddy_matches', []);
+let messages = Storage.get('fitbuddy_messages', {});
+
+// ---------- Helpers ----------
+function saveAll(){ Storage.set('fitbuddy_user', user); Storage.set('fitbuddy_profiles', profiles); Storage.set('fitbuddy_events', events); Storage.set('fitbuddy_matches', matches); Storage.set('fitbuddy_messages', messages); }
+
+function showToast(msg, icon='✅'){
+    const t = document.getElementById('toast');
+    document.getElementById('toast-msg').textContent = msg;
+    document.getElementById('toast-icon').textContent = icon;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function goTo(pageId){
+    const target = document.getElementById(pageId);
+    if (!target) return;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    target.classList.add('active');
+    target.scrollTop = 0;
+
+    const navPages = ['home','match','activities','chat','profile'];
+    const nav = document.getElementById('global-nav');
+    if (navPages.includes(pageId)) {
+        target.appendChild(nav);
+        nav.style.display = 'flex';
+        updateNav(pageId);
+    } else {
+        nav.style.display = 'none';
+    }
+
+    if (pageId === 'home') { renderProfile(); renderHomeEvents(); }
+    if (pageId === 'match') renderMatchStack();
+    if (pageId === 'activities') renderEvents();
+    if (pageId === 'chat') renderChatList();
+    if (pageId === 'profile') renderProfile();
+}
+
+function updateNav(pageId){
+    document.querySelectorAll('#global-nav .nav-item').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.target === pageId);
+    });
+}
+
+// ---------- Auth ----------
+function selectGender(btn){
+    document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+}
+
+function doRegister(){
+    const name = document.getElementById('reg-name').value.trim();
+    const id = document.getElementById('reg-id').value.trim();
+    const pass = document.getElementById('reg-pass').value.trim();
+    const age = document.getElementById('reg-age').value;
+    const job = document.getElementById('reg-job').value;
+    const gender = document.querySelector('.gender-btn.selected')?.dataset.g;
+    if (!name || !id || !pass || !gender){ showToast('กรุณากรอกข้อมูลให้ครบ', '⚠️'); return; }
+    user = {
+        name, id, pass, age, job, gender,
+        package: 'Signature',
+        sports: [
+            {name:'วิ่ง', level:'ระดับปานกลาง'},
+            {name:'เวทเทรนนิ่ง', level:'ระดับต้น'},
+            {name:'แบดมินตัน', level:'ระดับปานกลาง'}
+        ],
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=fff&color=8b5cf6&size=128`
+    };
+    saveAll();
+    goTo('package');
+    showToast('สมัครสมาชิกสำเร็จ!');
+}
+
+function doLogin(){
+    const id = document.getElementById('login-id').value.trim();
+    const pass = document.getElementById('login-pass').value.trim();
+    const stored = Storage.get('fitbuddy_user', null);
+    if (stored && stored.id === id && stored.pass === pass){
+        user = stored;
+        saveAll();
+        goTo('home');
+        showToast('เข้าสู่ระบบสำเร็จ!');
+    } else {
+        showToast('เลขสมาชิกหรือรหัสผ่านไม่ถูกต้อง', '❌');
+    }
+}
+
+function logout(){
+    if (confirm('ออกจากระบบ?')){
+        user = null;
+        Storage.remove('fitbuddy_user');
+        goTo('splash');
+        showToast('ออกจากระบบแล้ว', '👋');
+    }
+}
+
+// ---------- Package / Interests ----------
+function selectPackage(card){
+    document.querySelectorAll('.package-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    if (user){ user.package = card.dataset.p; saveAll(); }
+}
+
+function saveInterests(){
+    const sports = [];
+    document.querySelectorAll('.sport-row').forEach(row => {
+        const level = row.querySelector('.sport-level').value;
+        if (level !== 'ไม่ได้เล่น') sports.push({ name: row.dataset.sport, level });
+    });
+    if (user){ user.sports = sports; saveAll(); }
+    goTo('home');
+    showToast('บันทึกความสนใจแล้ว');
+}
+
+function showAddSportModal(){ document.getElementById('sport-modal').classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+function addCustomSport(){
+    const name = document.getElementById('new-sport-name').value.trim();
+    const level = document.getElementById('new-sport-level').value;
+    if (!name){ showToast('กรุณาใส่ชื่อกีฬา','⚠️'); return; }
+    const list = document.getElementById('sports-list');
+    const row = document.createElement('div');
+    row.className = 'glass-card p-4 rounded-2xl flex justify-between items-center sport-row';
+    row.dataset.sport = name;
+    row.innerHTML = `<span class="text-slate-700 font-medium">⭐ ${name}</span>
+        <select class="sport-level px-3 py-2 rounded-xl text-sm">
+            <option>ไม่ได้เล่น</option>
+            <option ${level==='ระดับต้น'?'selected':''}>ระดับต้น</option>
+            <option ${level==='ระดับปานกลาง'?'selected':''}>ระดับปานกลาง</option>
+            <option ${level==='ระดับสูง'?'selected':''}>ระดับสูง</option>
+        </select>`;
+    list.appendChild(row);
+    closeModal('sport-modal');
+    document.getElementById('new-sport-name').value = '';
+    showToast('เพิ่มกีฬาแล้ว');
+}
+
+// ---------- Home ----------
+function renderHomeEvents(){
+    const container = document.getElementById('home-events');
+    const now = new Date().toISOString();
+    const upcoming = events.filter(e => e.date >= now).slice(0, 2);
+    container.innerHTML = upcoming.map(e => {
+        const d = new Date(e.date);
+        return `
+        <div class="glass-card p-4 rounded-2xl flex items-center gap-4 cursor-pointer active:scale-95 transition" onclick="goTo('activities')">
+            <div class="w-14 h-14 rounded-2xl purple-gradient flex items-center justify-center text-white text-2xl">${sportIcon(e.sport)}</div>
+            <div class="flex-1">
+                <h4 class="font-bold text-slate-800 text-sm">${e.title}</h4>
+                <p class="text-xs text-slate-500">${d.toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'})}</p>
+            </div>
+            <span class="text-xs bg-purple-100 text-purple-600 px-3 py-1 rounded-full">${e.joined ? 'เข้าร่วม' : 'เปิด'}</span>
+        </div>`;
+    }).join('');
+}
+
+function sportIcon(s){
+    const map = {'วิ่ง':'🏃','เวทเทรนนิ่ง':'🏋️','แบดมินตัน':'🏸','ว่ายน้ำ':'🏊','โยคะ':'🧘'};
+    return map[s] || '⭐';
+}
+
+function goToSport(sport){
+    currentFilter = sport;
+    goTo('match');
+    document.querySelectorAll('.sport-chip').forEach(b => {
+        const txt = b.textContent;
+        b.classList.toggle('selected', txt.includes(sport) || (sport==='all' && txt==='ทั้งหมด'));
+    });
+}
+
+// ---------- Match ----------
+function renderMatchStack(){
+    const container = document.getElementById('match-stack');
+    container.innerHTML = '';
+    const list = currentFilter === 'all' ? profiles : profiles.filter(p => p.sport === currentFilter);
+    const remaining = list.filter(p => !p.liked);
+    if (remaining.length === 0){
+        container.innerHTML = '<div class="text-center text-slate-500"><div class="text-4xl mb-2">🎉</div><p>ไม่มีโปรไฟล์ใหม่แล้ว<br>ลองเปลี่ยนประเภทกีฬาดู</p></div>';
+        return;
+    }
+    const p = remaining[0];
+    const card = document.createElement('div');
+    card.className = 'swipe-card absolute w-full max-w-[340px] glass-card rounded-3xl overflow-hidden shadow-lg cursor-grab';
+    card.id = 'current-card';
+    card.innerHTML = `
+        <div class="relative">
+            <img src="${p.avatar}" class="w-full h-64 object-cover bg-purple-50">
+            <div class="stamp like">LIKE</div>
+            <div class="stamp skip">NOPE</div>
+        </div>
+        <div class="p-5">
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800">${p.name}, ${p.age}</h3>
+                    <p class="text-sm text-slate-500">${p.gender === 'ชาย' ? '👨' : '👩'} ${p.gender}</p>
+                </div>
+                <span class="px-3 py-1 bg-purple-100 text-purple-600 rounded-full text-xs font-medium">${p.pkg}</span>
+            </div>
+            <div class="flex flex-wrap gap-2 mb-4">
+                <span class="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-600">${p.sport}</span>
+                <span class="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-600">${p.level}</span>
+            </div>
+            <p class="text-sm text-slate-500">กด ♥ เพื่อแสดงความสนใจ หรือ ✕ เพื่อข้าม</p>
+        </div>`;
+    let startX = 0, currentX = 0;
+    card.addEventListener('touchstart', e => startX = e.touches[0].clientX);
+    card.addEventListener('touchmove', e => {
+        currentX = e.touches[0].clientX - startX;
+        card.style.transform = `translateX(${currentX}px) rotate(${currentX*0.05}deg)`;
+        card.classList.toggle('swiping-right', currentX > 60);
+        card.classList.toggle('swiping-left', currentX < -60);
+    });
+    card.addEventListener('touchend', () => {
+        if (currentX > 80) swipe('right');
+        else if (currentX < -80) swipe('left');
+        else { card.style.transform = ''; card.classList.remove('swiping-right','swiping-left'); }
+        currentX = 0;
+    });
+    container.appendChild(card);
+}
+
+function filterMatch(sport, btn){
+    currentFilter = sport;
+    document.querySelectorAll('.sport-chip').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    renderMatchStack();
+}
+
+function swipe(direction){
+    const card = document.getElementById('current-card');
+    if (!card) return;
+    const remaining = profiles.filter(p => !p.liked);
+    const p = remaining[0];
+    card.classList.add(direction === 'right' ? 'swipe-right' : 'swipe-left');
+    setTimeout(() => {
+        if (direction === 'right' && p){
+            p.liked = true;
+            addMatch(p);
+            saveAll();
+            showToast(`คุณสนใจ ${p.name} แล้ว! 💜`);
+        } else if (p) {
+            p.liked = true;
+            saveAll();
+        }
+        renderMatchStack();
+    }, 300);
+}
+
+// ---------- Chat ----------
+function addMatch(profile){
+    if (!matches.find(m => m.id === profile.name)){
+        const now = new Date().toISOString();
+        matches.push({ id: profile.name, name: profile.name, avatar: profile.avatar, sport: profile.sport, lastMessage: 'สวัสดี! สนใจออกกำลังกายด้วยกันไหม?', lastTime: now });
+        messages[profile.name] = [{ id: Date.now(), text: 'สวัสดี! สนใจออกกำลังกายด้วยกันไหม?', sender: 'them', time: now }];
+        saveAll();
+    }
+}
+
+function renderChatList(){
+    const list = document.getElementById('chat-list');
+    list.innerHTML = '';
+    document.getElementById('chat-badge').classList.toggle('hidden', matches.length === 0);
+    if (matches.length === 0){
+        list.innerHTML = '<div class="text-center text-slate-500 pt-10"><div class="text-4xl mb-2">💬</div><p>ยังไม่มีเพื่อนคุย<br>ไปจับคู่กัน!</p></div>';
+        return;
+    }
+    matches.sort((a,b) => new Date(b.lastTime) - new Date(a.lastTime));
+    matches.forEach(m => {
+        const d = new Date(m.lastTime);
+        const timeStr = d.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+        const div = document.createElement('div');
+        div.className = 'glass-card p-3 rounded-2xl flex items-center gap-3 cursor-pointer active:scale-95 transition';
+        div.onclick = () => openChat(m.id);
+        div.innerHTML = `
+            <img src="${m.avatar}" class="w-14 h-14 rounded-full object-cover border-2 border-white">
+            <div class="flex-1 min-w-0">
+                <div class="flex justify-between items-center">
+                    <h4 class="font-bold text-slate-800 text-sm truncate">${m.name}</h4>
+                    <span class="text-xs text-slate-400">${timeStr}</span>
+                </div>
+                <p class="text-xs text-slate-500 truncate">${m.lastMessage}</p>
+            </div>`;
+        list.appendChild(div);
+    });
+}
+
+function openChat(matchId){
+    currentChatId = matchId;
+    const m = matches.find(x => x.id === matchId);
+    if (!m) return;
+    document.getElementById('chat-header-name').textContent = m.name;
+    document.getElementById('chat-header-img').src = m.avatar;
+    renderMessages();
+    goTo('chat-room');
+}
+
+function renderMessages(){
+    const container = document.getElementById('chat-messages');
+    container.innerHTML = '';
+    const msgs = messages[currentChatId] || [];
+    msgs.forEach(msg => {
+        const isMe = msg.sender === 'me';
+        const div = document.createElement('div');
+        div.className = `flex ${isMe ? 'justify-end' : 'justify-start'} mb-3`;
+        div.innerHTML = `
+            <div class="max-w-[75%] px-4 py-2 rounded-2xl text-sm ${isMe ? 'purple-gradient text-white rounded-br-none' : 'bg-white text-slate-700 rounded-bl-none shadow-sm'}">
+                ${msg.text}
+            </div>`;
+        container.appendChild(div);
+    });
+    container.scrollTop = container.scrollHeight;
+}
+
+function sendMessage(){
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text || !currentChatId) return;
+    const now = new Date().toISOString();
+    if (!messages[currentChatId]) messages[currentChatId] = [];
+    messages[currentChatId].push({ id: Date.now(), text, sender: 'me', time: now });
+    const m = matches.find(x => x.id === currentChatId);
+    if (m){ m.lastMessage = text; m.lastTime = now; }
+    saveAll();
+    input.value = '';
+    renderMessages();
+    renderChatList();
+    setTimeout(() => {
+        if (!messages[currentChatId]) return;
+        const reply = 'เยี่ยมเลย! งั้นเจอกันนะ 😊';
+        messages[currentChatId].push({ id: Date.now()+1, text: reply, sender: 'them', time: new Date().toISOString() });
+        if (m){ m.lastMessage = reply; m.lastTime = new Date().toISOString(); }
+        saveAll();
+        if (document.getElementById('chat-room').classList.contains('active')) renderMessages();
+        if (document.getElementById('chat').classList.contains('active')) renderChatList();
+    }, 1500);
+}
+
+// ---------- Activities ----------
+function renderEvents(){
+    const list = document.getElementById('events-list');
+    list.innerHTML = '';
+    const now = new Date().toISOString();
+    const filtered = events.filter(e => eventTab === 'upcoming' ? e.date >= now : e.date < now)
+                         .sort((a,b) => a.date.localeCompare(b.date));
+    if (filtered.length === 0){
+        list.innerHTML = '<p class="text-center text-slate-400 text-sm py-8">ไม่มีกิจกรรม</p>';
+        return;
+    }
+    filtered.forEach(e => {
+        const d = new Date(e.date);
+        const diff = Math.ceil((new Date(e.date) - new Date()) / (1000*60*60*24));
+        const dayText = diff > 0 ? `อีก ${diff} วัน` : (diff === 0 ? 'วันนี้' : 'ผ่านมาแล้ว');
+        const div = document.createElement('div');
+        div.className = 'glass-card p-4 rounded-2xl';
+        div.innerHTML = `
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <h4 class="font-bold text-slate-800">${e.title}</h4>
+                    <p class="text-xs ${diff>=0?'text-green-600':'text-slate-400'}">${dayText}</p>
+                </div>
+                <span class="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full">${e.sport}</span>
+            </div>
+            <p class="text-sm text-slate-500 mb-2">📅 ${d.toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'})}</p>
+            <p class="text-sm text-slate-500 mb-3">📍 ${e.location}</p>
+            <div class="flex justify-between items-center">
+                <div class="flex -space-x-2">
+                    ${e.members.map(m => `<div class="w-8 h-8 rounded-full border-2 border-white bg-purple-200 flex items-center justify-center text-xs text-purple-700 font-bold">${m}</div>`).join('')}
+                    <div class="w-8 h-8 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-xs text-slate-500">+</div>
+                </div>
+                <button type="button" onclick="toggleJoin(${e.id})" class="px-4 py-2 rounded-xl text-sm font-medium ${e.joined ? 'bg-red-100 text-red-500' : 'purple-gradient text-white'}">
+                    ${e.joined ? 'ยกเลิก' : 'เข้าร่วม'}
+                </button>
+            </div>`;
+        list.appendChild(div);
+    });
+}
+
+function setEventTab(tab){
+    eventTab = tab;
+    document.getElementById('tab-upcoming').className = tab==='upcoming' ? 'px-5 py-2 purple-gradient text-white rounded-full text-sm font-medium transition' : 'px-5 py-2 bg-white/60 text-slate-500 rounded-full text-sm transition';
+    document.getElementById('tab-past').className = tab==='past' ? 'px-5 py-2 purple-gradient text-white rounded-full text-sm font-medium transition' : 'px-5 py-2 bg-white/60 text-slate-500 rounded-full text-sm transition';
+    renderEvents();
+}
+
+function openCreateEvent(){ document.getElementById('event-modal').classList.add('show'); }
+
+function createEvent(){
+    const title = document.getElementById('evt-title').value.trim();
+    const sport = document.getElementById('evt-sport').value;
+    const date = document.getElementById('evt-date').value;
+    const loc = document.getElementById('evt-location').value.trim();
+    if (!title || !date || !loc){ showToast('กรุณากรอกข้อมูลให้ครบ','⚠️'); return; }
+    events.push({
+        id: Date.now(), title, sport, date, location: loc,
+        members: [user?.name?.[0] || 'ฉัน'], joined: true
+    });
+    saveAll();
+    closeModal('event-modal');
+    document.getElementById('evt-title').value = '';
+    document.getElementById('evt-location').value = '';
+    renderEvents();
+    renderHomeEvents();
+    showToast('สร้างกิจกรรมสำเร็จ!');
+}
+
+function toggleJoin(id){
+    const e = events.find(x => x.id === id);
+    if (e){
+        e.joined = !e.joined;
+        if (e.joined){ if (!e.members.includes('ฉัน')) e.members.push('ฉัน'); }
+        else { e.members = e.members.filter(m => m !== 'ฉัน'); }
+        saveAll();
+        renderEvents();
+        renderHomeEvents();
+        showToast(e.joined ? 'เข้าร่วมกิจกรรมแล้ว' : 'ยกเลิกการเข้าร่วมแล้ว');
+    }
+}
+
+// ---------- Profile ----------
+function renderProfile(){
+    if (!user) return;
+    document.getElementById('profile-name').textContent = user.name;
+    document.getElementById('home-name').textContent = user.name;
+    document.getElementById('profile-id').textContent = 'เลขสมาชิก ' + user.id;
+    document.getElementById('profile-badge').textContent = user.package;
+    document.getElementById('p-gender').textContent = user.gender;
+    document.getElementById('p-age').textContent = user.age;
+    document.getElementById('p-job').textContent = user.job;
+    document.getElementById('p-package').textContent = user.package;
+    document.getElementById('profile-img').src = user.avatar;
+    document.getElementById('p-sports').innerHTML = (user.sports || []).map(s => 
+        `<span class="px-3 py-1 bg-purple-100 text-purple-600 rounded-full text-xs">${s.name} • ${s.level}</span>`
+    ).join('');
+}
+
+function changeAvatar(){
+    const url = prompt('ใส่ URL รูปโปรไฟล์ (หรือเว้นว่างให้สุ่มสี)', user.avatar);
+    if (url !== null){
+        user.avatar = url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=${randomColor()}&color=fff&size=128`;
+        saveAll();
+        renderProfile();
+        showToast('อัปเดตรูปโปรไฟล์แล้ว');
+    }
+}
+function randomColor(){ return ['8b5cf6','f472b6','60a5fa','34d399','fbbf24','a78bfa'][Math.floor(Math.random()*6)]; }
+
+function saveProfile(){
+    user.name = document.getElementById('edit-name').value;
+    user.age = document.getElementById('edit-age').value;
+    user.job = document.getElementById('edit-job').value;
+    saveAll();
+    goTo('profile');
+    showToast('บันทึกโปรไฟล์แล้ว');
+}
+
+function goToEditProfile(){
+    document.getElementById('edit-name').value = user.name;
+    document.getElementById('edit-age').value = user.age;
+    document.getElementById('edit-job').value = user.job;
+    goTo('edit-profile');
+}
+
+function showNoti(){ showToast('ยังไม่มีการแจ้งเตือนใหม่', '🔔'); }
+
+// ---------- Init ----------
+document.addEventListener('DOMContentLoaded', () => {
+    if (user){ goTo('home'); }
+    else { goTo('splash'); }
+});
+
+// Expose for inline handlers
+window.goTo = goTo;
+window.goToEditProfile = goToEditProfile;
+window.goToSport = goToSport;
+</script>
+
+</body>
+</html>
